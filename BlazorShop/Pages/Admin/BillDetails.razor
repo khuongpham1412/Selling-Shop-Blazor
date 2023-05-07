@@ -1,0 +1,94 @@
+﻿@page "/admin/bills/billdetail/{Id}"
+@using BlazorShop.Core.constant
+@using BlazorShop.Entities
+@using BlazorShop.Model
+@inject BlazorShop.Service.IBillDetailService BillDetailService;
+@inject BlazorShop.Service.IBillService BillService;
+@inject BlazorShop.Service.IProductService ProductService;
+@inject Blazored.SessionStorage.ISessionStorageService session
+@inject NavigationManager NavigationManager
+@layout AdminLayout
+
+
+@if (billDetails == null)
+{
+    <div class="loading"><Icon Type="loading" Height="40px" Width="40px" Theme="outline" /></div>
+}
+else
+{
+    <div class="d-flex justify-content-between">
+        <h4 style="display: inline-block;">Quản lý chi tiết hóa đơn</h4>
+        <div>
+            <Tooltip Title="@IconType.Outline.Search">
+                <Button Type="@ButtonType.Primary" Icon="@IconType.Outline.Search" />
+            </Tooltip>
+        </div>
+    </div>
+    <Table @ref="table"
+       TItem="BillDetail"
+       DataSource="@billDetails">
+        <Selection Key="@context.Id" />
+         <ActionColumn Title="Tên sản phẩm">
+            @ProductService.GetProductFromId(@context.ProductId).Name
+        </ActionColumn>
+         <ActionColumn Title="Hình">
+            <img style="width:100px;height:150px;" src="@ProductService.GetProductFromId(@context.ProductId).Images[0].Path" />
+        </ActionColumn>
+         <ActionColumn Title="Giá">
+            @ProductService.GetProductFromId(@context.ProductId).Price
+        </ActionColumn>
+
+        <Column Title="Số lượng" @bind-Field="@context.Amount" Sortable />
+         <ActionColumn Title="Tổng tiền">
+            @(ProductService.GetProductFromId(context.ProductId).Price * context.Amount)
+        </ActionColumn>
+
+    </Table>
+   
+}
+
+
+@code {
+    [Parameter]
+    public string Id { get; set; }
+
+    int[] a = { PermissionAccount.ADMIN };
+
+    List<BillDetail> billDetails = new List<BillDetail>();
+    BillDetail billDetail = new BillDetail();
+    ITable table;
+    protected override void OnInitialized()
+    {
+        getData();
+    }
+
+    private void getData()
+    {
+        billDetails = BillDetailService.GetBillDetailFromId(Id);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await checkRole(a);
+        }
+    }
+    public async Task checkRole(int[] a)
+    {
+        SessionUser sessionUser;
+        sessionUser = await session.GetItemAsync<SessionUser>(SessionKey.USER);
+        if (sessionUser != null)
+        {
+            if (!a.Contains(sessionUser.Permission))
+            {
+                NavigationManager.NavigateTo("/admin/login");
+            }
+        }
+        else
+        {
+            NavigationManager.NavigateTo("/admin/login"); 
+        }
+
+    }
+}

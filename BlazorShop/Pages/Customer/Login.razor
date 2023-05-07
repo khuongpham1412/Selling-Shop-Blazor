@@ -1,0 +1,111 @@
+﻿@page "/login"
+@layout AuthLayout
+@inject BlazorShop.Service.IAccountService AccountService
+@inject BlazorShop.Service.ICustomerService CustomerService
+@inject MessageService _message;
+@using BlazorShop.Core.constant
+@using BlazorShop.Entities
+@using BlazorShop.Model
+@inject NavigationManager NavigationManager
+@inject Blazored.SessionStorage.ISessionStorageService session
+
+<section class="vh-100" style="display: flex;justify-content: center;align-items: center;">
+    <div class="container-fluid h-custom">
+        <div class="row d-flex justify-content-center align-items-center h-100">
+            <div class="col-md-9 col-lg-6 col-xl-5">
+                <img src="img/login.svg" style="width: 70vh;"
+                     class="img-fluid" alt="Sample image">
+            </div>
+            <div class="col-md-8 col-lg-6 col-xl-4 offset-xl-1">
+                <form>
+                    <div class="row">
+                        <div class="col-lg-4 col-md-4">
+                            <div class="section-title">
+                                <h4>Login</h4>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Email input -->
+                    <div class="form-outline mb-4">
+                        <input type="email" @bind="username" id="form3Example3" class="form-control form-control-lg"
+                               placeholder="Enter a valid email address" />
+                        <label class="form-label" for="form3Example3">Email address</label>
+                    </div>
+
+                    <!-- Password input -->
+                    <div class="form-outline mb-3">
+                        <input type="password" @bind="password" id="form3Example4" class="form-control form-control-lg"
+                               placeholder="Enter password" />
+                        <label class="form-label" for="form3Example4">Password</label>
+                    </div>
+
+                    <div class="d-flex justify-content-between align-items-center">
+                        <!-- Checkbox -->
+                        <div class="form-check mb-0">
+                            <input class="form-check-input me-2" type="checkbox" value="" id="form2Example3" />
+                            <label class="form-check-label" for="form2Example3">
+                                Remember me
+                            </label>
+                        </div>
+                        <a href="#!" class="text-body">Forgot password?</a>
+                    </div>
+
+                    <div class="text-center text-lg-start mt-4 pt-2">
+                        <button @onclick=@(e => login()) type="button" class="btn btn-danger btn-lg"
+                                style="padding-left: 2.5rem; padding-right: 2.5rem;">
+                            Login
+                        </button>
+                        <p class="small fw-bold mt-2 pt-1 mb-0">
+                            Don't have an account? <NavLink href="/register"
+                                                            class="link-danger">Register</NavLink>
+                        </p>
+                    </div>
+
+                </form>
+            </div>
+        </div>
+    </div>
+
+</section>
+
+@code {
+    string username;
+    string password;
+    private async void login()
+    {
+        Account account = AccountService.Login(username, password);
+        if(account != null)
+        {
+            if(account.Permission == 0)
+            {
+                if(account.Status == 1)
+                {
+                    SessionUser sessionUser = new SessionUser();
+                    sessionUser.Id = account.Id;
+                    sessionUser.UserName = account.Username;
+                    sessionUser.Name = CustomerService.GetCustomerFromIdAccount(account.Id).Name;
+                    sessionUser.Email = CustomerService.GetCustomerFromIdAccount(account.Id).Email;
+                    sessionUser.Permission = account.Permission;
+                    await session.SetItemAsync(SessionKey.CUSTOMER,sessionUser);
+                    NavigationManager.NavigateTo("/");
+                    await _message.Success("Đăng nhập thành công");
+                }
+                else
+                {
+                    await _message.Error("Tài khoản đã bị khóa !!!");
+                }
+            }
+            else
+            {
+                await _message.Error("Sai Tên đăng nhập hoặc mặt khẩu!");
+            }
+        }
+        else
+        {
+            await _message.Error("Sai Tên đăng nhập hoặc mặt khẩu!");
+        }
+    }
+
+
+}

@@ -1,0 +1,156 @@
+﻿@page "/admin/sizes"
+@using BlazorShop.Entities
+@using BlazorColorPicker
+@using BlazorShop.Model
+@using BlazorShop.Core.constant
+@inject Blazored.SessionStorage.ISessionStorageService session
+@inject BlazorShop.Service.ISizeService SizeService
+@inject NavigationManager NavigationManager
+@inject ModalService _modalService
+@layout AdminLayout
+@if (sizes == null)
+{
+    <div class="loading"><Icon Type="loading" Height="40px" Width="40px" Theme="outline" /></div>
+}
+else
+{
+    <div class="d-flex justify-content-between">
+        <h4 style="display: inline-block;">Quản lý Size sản phẩm</h4>
+        <div>
+            <Button Type="@ButtonType.Primary" OnClick="@showFormAdd">Thêm</Button>
+            <Tooltip Title="@IconType.Outline.Search">
+                <Button Type="@ButtonType.Primary" Icon="@IconType.Outline.Search" />
+            </Tooltip>
+        </div>
+    </div>
+    <Table @ref="table"
+       TItem="Size"
+       DataSource="@sizes">
+        <Selection Key="@context.Id" />
+        <Column Title="Tên Size" @bind-Field="@context.Name" Sortable />
+        <ActionColumn Title="Chỉnh sửa">
+            <Space>
+                <SpaceItem>
+                    <Tooltip Title="@IconType.Outline.Edit">
+                        <Button Type="@ButtonType.Primary" Shape="@ButtonShape.Circle" Icon="@IconType.Outline.Edit" OnClick="@(()=>showFormUpdate(context))" />
+                    </Tooltip>
+                </SpaceItem><SpaceItem>
+                    <Tooltip Title="@IconType.Outline.Delete">
+                        <Button Danger Type="@ButtonType.Primary" Shape="@ButtonShape.Circle" Icon="@IconType.Outline.Delete" OnClick="@(()=>showConfirmDelete(context.Id))" />
+                    </Tooltip>
+                </SpaceItem>
+            </Space>
+        </ActionColumn>
+    </Table>
+    <Modal Title="@title"
+       Visible="@_visibleDelete"
+       OnOk="@HandleDelete"
+       OkType="danger"
+       OnCancel="@(()=>_visibleDelete = false)"
+       MaxBodyHeight="@("30vh")"
+       WrapClassName="modal-delete">
+        <div>
+            <p>
+                Bạn có chắc muốn xóa Size sản phẩm này?
+            </p>
+        </div>
+    </Modal>
+    <Modal Title="@(isUpdate ? titleUpdate : titleAdd)"
+       Visible="@_visibleFormAddUpdate"
+       OnOk="@(isUpdate ? HandleUpdateColor : HandleAddColor)"
+       OnCancel="@(()=>_visibleFormAddUpdate = false)"
+       MaxBodyHeight="@("50vh")">
+        <Form Model="@size"
+          LabelColSpan="8"
+          WrapperColSpan="16">
+            <FormItem Label="Tên Size sản phẩm">
+                <Input @bind-Value="@context.Name" />
+            </FormItem>
+        </Form>
+        <div>
+        </div>
+    </Modal>
+}
+
+
+@code {
+    int[] a = { PermissionAccount.ADMIN };
+    List<Size> sizes = new List<Size>();
+    Size size = new Size();
+    string idDelete = "";
+    string title = "Cảnh Báo !!!";
+    string titleAdd = "Thêm Size sản phẩm";
+    string titleUpdate = "Sửa Size sản phẩm";
+    bool _visibleDelete = false;
+    bool _visibleFormAddUpdate = false;
+    bool isUpdate = false;
+    ITable table;
+    protected override void OnInitialized()
+    {
+        getData();
+    }
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await checkRole(a);
+        }
+    }
+    private void getData()
+    {
+        sizes = SizeService.GetAllSize();
+    }
+    private void showConfirmDelete(string id)
+    {
+        idDelete = id;
+        _visibleDelete = true;
+    }
+    private void HandleDelete(MouseEventArgs e)
+    {
+        sizes = sizes.Where(x => x.Id != idDelete).ToList();
+        bool s = SizeService.Delete(idDelete);
+        _visibleDelete = false;
+    }
+    private void showFormAdd()
+    {
+        isUpdate = false;
+        size = new Size();
+        _visibleFormAddUpdate = true;
+    }
+    private void showFormUpdate(Size sizeUpdate)
+    {
+        isUpdate = true;
+        size = sizeUpdate;
+        _visibleFormAddUpdate = true;
+    }
+    private void HandleAddColor(MouseEventArgs e)
+    {
+        SizeService.Add(size);
+        getData();
+        _visibleFormAddUpdate = false;
+    }
+    private void HandleUpdateColor(MouseEventArgs e)
+    {
+        SizeService.Update(size);
+        getData();
+        _visibleFormAddUpdate = false;
+    }
+    public async Task checkRole(int[] a)
+    {
+        SessionUser sessionUser;
+        sessionUser = await session.GetItemAsync<SessionUser>(SessionKey.USER);
+        if (sessionUser != null)
+        {
+            if (!a.Contains(sessionUser.Permission))
+            {
+                NavigationManager.NavigateTo("/admin/login");
+            }
+        }
+        else
+        {
+            NavigationManager.NavigateTo("/admin/login"); 
+        }
+
+    }
+}
+

@@ -1,0 +1,42 @@
+﻿@page "/admin/accounts"
+@using BlazorShop.Core.constant
+@using BlazorShop.Model
+@inject Blazored.SessionStorage.ISessionStorageService session
+@inject NavigationManager NavigationManager
+@layout AdminLayout
+<h4>Accounts</h4>
+
+@code {
+
+    int[] a = { PermissionAccount.ADMIN };
+
+    protected override async Task OnInitializedAsync()
+    {
+
+    }
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await checkRole(a);
+        }
+    }
+    public async Task checkRole(int[] a)
+    {
+        SessionUser sessionUser;
+        sessionUser = await session.GetItemAsync<SessionUser>(SessionKey.USER);
+        if (sessionUser != null)
+        {
+            if (!a.Contains(sessionUser.Permission))
+            {
+                NavigationManager.NavigateTo("/admin/login");
+            }
+        }
+        else
+        {
+            NavigationManager.NavigateTo("/admin/login"); 
+        }
+
+    }
+
+}

@@ -1,0 +1,198 @@
+﻿@page "/admin/employees"
+@using BlazorShop.Entities
+@using BlazorColorPicker
+@using BlazorShop.Model
+@using BlazorShop.Core.constant
+@inject Blazored.SessionStorage.ISessionStorageService session
+@inject BlazorShop.Service.IEmployeeService EmployeeService
+@inject BlazorShop.Service.IAccountService AccountService
+@inject NavigationManager NavigationManager
+@inject ModalService _modalService
+@layout AdminLayout
+@if (employees == null)
+{
+    <div class="loading"><Icon Type="loading" Height="40px" Width="40px" Theme="outline" /></div>
+}
+else
+{
+    <div class="d-flex justify-content-between">
+        <h4 style="display: inline-block;">Quản lý Nhân viên</h4>
+        <div>
+            <Button Type="@ButtonType.Primary" OnClick="@showFormAdd">Thêm</Button>
+            <Tooltip Title="@IconType.Outline.Search">
+                <Button Type="@ButtonType.Primary" Icon="@IconType.Outline.Search" />
+            </Tooltip>
+        </div>
+    </div>
+    <Table @ref="table"
+       TItem="Employee"
+       DataSource="@employees">
+        <Selection Key="@context.Id" />
+        <ActionColumn Title="Username">
+            @AccountService.GetAccountFromId(@context.AccountId).Username
+        </ActionColumn>
+        <Column Title="Tên Loại" @bind-Field="@context.Name" Sortable />
+        <Column Title="SDT" @bind-Field="@context.Phone" Sortable />
+        <Column Title="Email" @bind-Field="@context.Email" Sortable />
+        <Column Title="Địa chỉ" @bind-Field="@context.Address" Sortable />
+         <ActionColumn Title="Create Date">
+            @AccountService.GetAccountFromId(@context.AccountId).CreatedDate
+        </ActionColumn>
+        <ActionColumn Title="Chỉnh sửa">
+            <Space>
+                <SpaceItem>
+                    <Tooltip Title="@IconType.Outline.Edit">
+                        <Button Type="@ButtonType.Primary" Shape="@ButtonShape.Circle" Icon="@IconType.Outline.Edit" OnClick="@(()=>showFormUpdate(context))" />
+                    </Tooltip>
+                </SpaceItem><SpaceItem>
+                    <Tooltip Title="@IconType.Outline.Delete">
+                        <Button Danger Type="@ButtonType.Primary" Shape="@ButtonShape.Circle" Icon="@IconType.Outline.Delete" OnClick="@(()=>showConfirmDelete(context.AccountId, context.Id))" />
+                    </Tooltip>
+                </SpaceItem>
+            </Space>
+        </ActionColumn>
+    </Table>
+    <Modal Title="@title"
+       Visible="@_visibleDelete"
+       OnOk="@HandleDelete"
+       OkType="danger"
+       OnCancel="@(()=>_visibleDelete = false)"
+       MaxBodyHeight="@("30vh")"
+       WrapClassName="modal-delete">
+        <div>
+            <p>
+                Bạn có chắc muốn xóa Nhân viên này?
+            </p>
+        </div>
+    </Modal>
+    <Modal Title="@(isUpdate ? titleUpdate : titleAdd)"
+       Visible="@_visibleFormAddUpdate"
+       OnOk="@(isUpdate ? HandleUpdateEmployee : HandleAddEmployee)"
+       OnCancel="@(()=>_visibleFormAddUpdate = false)"
+       MaxBodyHeight="@("50vh")">
+        <Form Model="@employee"
+          LabelColSpan="8"
+          WrapperColSpan="16">
+            <FormItem Label="Tên Nhân viên">
+                <Input @bind-Value="@context.Name" />
+            </FormItem>
+            <FormItem Label="SDT">
+                <Input Type="number" @bind-Value="@context.Phone" />
+            </FormItem>
+            
+            <FormItem Label="Địa chỉ">
+                <Input @bind-Value="@context.Address" />
+            </FormItem>
+            @if (!isUpdate)
+            {
+                <FormItem Label="Email">
+                <Input @bind-Value="@context.Email" />
+                </FormItem>
+                <FormItem Label="Password">
+                    <Input type="password" @bind-Value="@account.Password" />
+                </FormItem>
+            }
+                
+            
+    </Form>
+        <div>
+        </div>
+    </Modal>
+}
+
+
+@code {
+    int[] a = { PermissionAccount.ADMIN };
+    List<Employee> employees = new List<Employee>();
+    Employee employee = new Employee();
+    Account account = new Account();
+    string accountId = "";
+    string employeeId = "";
+    string password = "";
+    string title = "Cảnh Báo !!!";
+    string titleAdd = "Thêm Nhân viên";
+    string titleUpdate = "Sửa Nhân viên";
+    bool _visibleDelete = false;
+    bool _visibleFormAddUpdate = false;
+    bool isUpdate = false;
+    ITable table;
+    protected override void OnInitialized()
+    {
+        getData();
+    }
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await checkRole(a);
+        }
+    }
+    private void getData()
+    {
+        employees = EmployeeService.GetAllEmployees();
+    }
+    private void showConfirmDelete(string accountid, string employeeid)
+    {
+        accountId = accountid;
+        employeeId = employeeid;
+        _visibleDelete = true;
+    }
+    private void HandleDelete(MouseEventArgs e)
+    {
+        employees = employees.Where(x => x.Id != employeeId).ToList();
+        AccountService.Delete(accountId);
+        EmployeeService.Delete(employeeId);
+        _visibleDelete = false;
+    }
+    private void showFormAdd()
+    {
+        isUpdate = false;
+        employee = new Employee();
+        _visibleFormAddUpdate = true;
+    }
+    private void showFormUpdate(Employee employ)
+    {
+        isUpdate = true;
+        employee = employ;
+        _visibleFormAddUpdate = true;
+    }
+    private void HandleAddEmployee(MouseEventArgs e)
+    {
+        account.Username = employee.Email;
+        account.Permission = 1;
+        account.Status = 1;
+        account.CreatedDate = DateTime.Now;
+        Account account1 = AccountService.Add(account);
+        employee.AccountId = account1.Id;
+        EmployeeService.Add(employee);
+        getData();
+        _visibleFormAddUpdate = false;
+    }
+    private void HandleUpdateEmployee(MouseEventArgs e)
+    {
+        //account.Username = employee.Email;
+        //account.Id = employee.AccountId;
+        //AccountService.Update(account);
+        EmployeeService.Update(employee);
+        getData();
+        _visibleFormAddUpdate = false;
+    }
+    public async Task checkRole(int[] a)
+    {
+        SessionUser sessionUser;
+        sessionUser = await session.GetItemAsync<SessionUser>(SessionKey.USER);
+        if (sessionUser != null)
+        {
+            if (!a.Contains(sessionUser.Permission))
+            {
+                NavigationManager.NavigateTo("/admin/login");
+            }
+        }
+        else
+        {
+            NavigationManager.NavigateTo("/admin/login"); 
+        }
+
+    }
+}
+

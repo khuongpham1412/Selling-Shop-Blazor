@@ -1,0 +1,183 @@
+﻿@page "/admin/vouchers"
+@using BlazorShop.Entities
+@using BlazorShop.Model
+@using BlazorShop.Core.constant
+@inject Blazored.SessionStorage.ISessionStorageService session
+@inject BlazorShop.Service.IVoucherService VoucherService
+@inject NavigationManager NavigationManager
+@inject ModalService _modalService
+@inject MessageService message;
+@layout AdminLayout
+@if (vouchers == null)
+{
+    <div class="loading"><Icon Type="loading" Height="40px" Width="40px" Theme="outline" /></div>
+}
+else
+{
+    <div class="d-flex justify-content-between">
+        <h4 style="display: inline-block;">Quản lý Phiếu giảm giá</h4>
+        <div>
+            <Button Type="@ButtonType.Primary" OnClick="@showFormAdd">Thêm</Button>
+            <Tooltip Title="@IconType.Outline.Search">
+                <Button Type="@ButtonType.Primary" Icon="@IconType.Outline.Search" />
+            </Tooltip>
+        </div>
+    </div>
+    <Table @ref="table"
+       TItem="Voucher"
+       DataSource="@vouchers">
+        <Selection Key="@context.Id" />
+        <Column Title="Tên Mã giảm giá" @bind-Field="@context.Name" Sortable />
+        <Column Title="Mã" @bind-Field="@context.Code" Sortable />
+        <Column Title="Ngày bắt đầu" @bind-Field="@context.StartDate" Format="yyyy-MM-dd" Sortable />
+        <Column Title="Ngày kết thúc" @bind-Field="@context.EndDate" Format="yyyy-MM-dd" Sortable />
+        <Column Title="Lượt sử dụng còn lại" @bind-Field="@context.Amount" Sortable />
+        <ActionColumn Title="Chỉnh sửa">
+            <Space>
+                <SpaceItem>
+                    <Tooltip Title="@IconType.Outline.Edit">
+                        <Button Type="@ButtonType.Primary" Shape="@ButtonShape.Circle" Icon="@IconType.Outline.Edit" OnClick="@(()=>showFormUpdate(context))" />
+                    </Tooltip>
+                </SpaceItem><SpaceItem>
+                    <Tooltip Title="@IconType.Outline.Delete">
+                        <Button Danger Type="@ButtonType.Primary" Shape="@ButtonShape.Circle" Icon="@IconType.Outline.Delete" OnClick="@(()=>showConfirmDelete(context.Id))" />
+                    </Tooltip>
+                </SpaceItem>
+            </Space>
+        </ActionColumn>
+    </Table>
+    <Modal Title="@title"
+       Visible="@_visibleDelete"
+       OnOk="@HandleDelete"
+       OkType="danger"
+       OnCancel="@(()=>_visibleDelete = false)"
+       MaxBodyHeight="@("30vh")"
+       WrapClassName="modal-delete">
+        <div>
+            <p>
+                Bạn có chắc muốn xóa Phiếu giảm giá này?
+            </p>
+        </div>
+    </Modal>
+    <Modal Title="@(isUpdate ? titleUpdate : titleAdd)"
+       Visible="@_visibleFormAddUpdate"
+       OnOk="@(isUpdate ? HandleUpdateVoucher : HandleAddVoucher)"
+       OnCancel="@(()=>_visibleFormAddUpdate = false)"
+       MaxBodyHeight="@("50vh")">
+        <Form Model="@voucher"
+          LabelColSpan="8"
+          WrapperColSpan="16"
+          Size="@AntSizeLDSType.Default">
+            <FormItem Label="Tên phiếu giảm giá">
+                <Input @bind-Value="@context.Name" />
+            </FormItem>
+            <FormItem Label="Mã áp dụng">
+                <Search Placeholder="input search text"  EnterButton="@("Genarate Code")" @bind-Value="@context.Code" OnSearch="RandomCode"/>
+            </FormItem>
+            <FormItem Label="Thời gian">
+                <DatePicker @bind-Value="@context.StartDate" DefaultValue="DateTime.Now" />
+                <DatePicker @bind-Value="@context.EndDate" DefaultValue="DateTime.Now.AddDays(10)" />
+            </FormItem>
+            <FormItem Label="Phần trăm giảm">
+                <AntDesign.InputNumber @bind-Value="@context.Percent" />
+            </FormItem>
+            <FormItem Label="Số lượng phát hành">
+                <AntDesign.InputNumber @bind-Value="@context.Amount" />
+            </FormItem>
+             <FormItem Label="Mô tả phiếu">
+                <TextArea @bind-Value="@context.Description" />
+            </FormItem>
+        </Form>
+        <div>
+        </div>
+    </Modal>
+}
+
+
+@code {
+    int[] a = { PermissionAccount.ADMIN };
+    List<Voucher> vouchers = new List<Voucher>();
+    Voucher voucher = new Voucher();
+    string idDelete = "";
+    string title = "Cảnh Báo !!!";
+    string titleAdd = "Thêm Phiếu giảm giá";
+    string titleUpdate = "Sửa Phiếu giảm giá";
+    bool _visibleDelete = false;
+    bool _visibleFormAddUpdate = false;
+    bool isUpdate = false;
+    ITable table;
+    protected override void OnInitialized()
+    {
+        getData();
+    }
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await checkRole(a);
+        }
+    }
+    private void getData()
+    {
+        vouchers = VoucherService.GetAllVoucher();
+    }
+    private void showConfirmDelete(string id)
+    {
+        idDelete = id;
+        _visibleDelete = true;
+    }
+    private void HandleDelete(MouseEventArgs e)
+    {
+        vouchers = vouchers.Where(x => x.Id != idDelete).ToList();
+        bool s = VoucherService.Delete(idDelete);
+        _visibleDelete = false;
+    }
+    private void showFormAdd()
+    {
+        isUpdate = false;
+        voucher = new Voucher();
+        _visibleFormAddUpdate = true;
+    }
+    private void showFormUpdate(Voucher voucherUpdate)
+    {
+        isUpdate = true;
+        voucher = voucherUpdate;
+        _visibleFormAddUpdate = true;
+    }
+    private void HandleAddVoucher(MouseEventArgs e)
+    {
+        VoucherService.Add(voucher);
+        getData();
+        _visibleFormAddUpdate = false;
+    }
+    private void HandleUpdateVoucher(MouseEventArgs e)
+    {
+        VoucherService.Update(voucher);
+        getData();
+        _visibleFormAddUpdate = false;
+    }
+    private void RandomCode()
+    {
+        Random random = new Random();
+        const string chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789";
+        voucher.Code = new string(Enumerable.Repeat(chars, 6)
+        .Select(s => s[random.Next(s.Length)]).ToArray());
+    }
+    public async Task checkRole(int[] a)
+    {
+        SessionUser sessionUser;
+        sessionUser = await session.GetItemAsync<SessionUser>(SessionKey.USER);
+        if (sessionUser != null)
+        {
+            if (!a.Contains(sessionUser.Permission))
+            {
+                NavigationManager.NavigateTo("/admin/login");
+            }
+        }
+        else
+        {
+            NavigationManager.NavigateTo("/admin/login"); 
+        }
+
+    }
+}

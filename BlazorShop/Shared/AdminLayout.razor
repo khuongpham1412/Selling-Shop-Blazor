@@ -1,0 +1,123 @@
+﻿@inherits LayoutComponentBase
+@using BlazorShop.Model
+@using BlazorShop.Core.constant
+@inject Blazored.SessionStorage.ISessionStorageService session
+@inject NavigationManager NavigationManager
+<Layout style="height: 100vh">
+    <Sider Breakpoint="@BreakpointType.Lg"
+           CollapsedWidth="64"
+           OnBreakpoint="@(broken => {
+            Console.WriteLine($"OnBreakpoint:{broken}");
+        })"
+           OnCollapse="@(collapsed => {
+            Console.WriteLine($"collapsed:{collapsed}");
+        })">
+        <div class="logo" style="background-color: white;">
+            <img src="/img/logo.png" />
+            <!-- <div @bind="@sessionUser.Email"></div>-->
+        </div>
+        <Menu Theme="MenuTheme.Dark" Mode="MenuMode.Inline" DefaultSelectedKeys=@(new[]{"4"})>
+            @{
+                RenderFragment sub1Title =
+                @<span>
+                    <Icon Type="appstore" Theme="outline" />
+                    <span>Sản phẩm</span>
+                </span>
+                ;
+            }
+            <MenuItem Key="12">
+                <Icon Type="container" Theme="outline" />
+                <span class="nav-text"><NavLink class="nav-link" href="admin">Dashboard</NavLink></span>
+            </MenuItem>
+            <SubMenu Key="sub1" TitleTemplate=sub1Title>
+                <MenuItem Key="11">
+                    <NavLink class="nav-link" href="admin/products">Danh sách</NavLink>
+                </MenuItem>
+                <MenuItem Key="3">
+                    <NavLink class="nav-link" href="admin/categories">Loại</NavLink>
+                </MenuItem>
+                <MenuItem Key="4">
+                    <NavLink class="nav-link" href="admin/colors">Màu</NavLink>
+                </MenuItem>
+                <MenuItem Key="5"><NavLink class="nav-link" href="admin/sizes">Kích thước</NavLink></MenuItem>
+            </SubMenu>
+            <MenuItem Key="6">
+                <Icon Type="container" Theme="outline" />
+                <span class="nav-text">
+                    <NavLink class="nav-link" href="admin/bills">Hóa đơn</NavLink>
+                </span>
+            </MenuItem>
+            <MenuItem Key="7">
+                <Icon Type="team" Theme="outline" />
+                <span class="nav-text"><NavLink class="nav-link" href="admin/employees">Nhân viên</NavLink></span>
+            </MenuItem>
+            <MenuItem Key="8">
+                <Icon Type="contacts" Theme="outline" />
+                <span class="nav-text"><NavLink class="nav-link" href="admin/customers">Khách hàng</NavLink></span>
+            </MenuItem>
+            <MenuItem Key="9">
+                <Icon Type="percentage" Theme="outline" />
+                <span class="nav-text"><NavLink class="nav-link" href="admin/vouchers">Phiếu giảm giá</NavLink></span>
+            </MenuItem>
+           
+        </Menu>
+    </Sider>
+    <Layout>
+        <Header Class="site-layout-sub-header-background" Style="padding: 0;text-align: right;padding-right: 15px;">
+            <Button Danger Type="@ButtonType.Primary" Icon="@IconType.Outline.Logout" OnClick="@ClearSession"></Button>
+        </Header>
+        <Content Style=" margin: 24px 16px;">
+            <div class="site-layout-background" style="padding: 24px; height: 100%;">
+                @Body
+            </div>
+        </Content>
+    </Layout>
+</Layout>
+
+<style>
+    #components-layout-demo-responsive .logo {
+        height: 32px;
+        background: rgba(255, 255, 255, 0.2);
+        margin: 16px;
+    }
+
+    .site-layout-sub-header-background {
+        background: #fff;
+    }
+
+    .site-layout-background {
+        background: #fff;
+    }
+
+    .logo {
+        display: flex;
+        background-color: #dcdcdc;
+        justify-content: center;
+        align-items: center;
+        height: 64px;
+    }
+
+    .nav-link {
+        padding: 0;
+        display: unset;
+        color: white !important;
+    }
+</style>
+
+@code {
+    bool collapsed;
+    
+
+    async void onCollapse(bool collapsed)
+    {
+        SessionUser sessionUser = await session.GetItemAsync<SessionUser>(SessionKey.USER);
+        Console.WriteLine("ukhdjwd"+ sessionUser.Email);
+        this.collapsed = collapsed;
+    }
+    public void ClearSession()
+    {
+        session.ClearAsync();
+        NavigationManager.NavigateTo("/admin/login"); 
+
+    }
+}

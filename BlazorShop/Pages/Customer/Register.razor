@@ -1,0 +1,116 @@
+﻿@page "/register"
+@layout AuthLayout
+@inject BlazorShop.Service.IAccountService AccountService;
+@inject BlazorShop.Service.ICustomerService CustomerService;
+@inject MessageService _message;
+@inject NavigationManager NavigationManager
+@inject Blazored.SessionStorage.ISessionStorageService session
+
+<section class="vh-100" style="display: flex;justify-content: center;align-items: center;">
+    <div class="container-fluid h-custom">
+        <div class="row d-flex justify-content-center align-items-center h-100">
+            <div class="col-md-9 col-lg-6 col-xl-5">
+                <img src="img/register.svg" style="width: 70vh;"
+                     class="img-fluid" alt="Sample image">
+            </div>
+            <div class="col-md-8 col-lg-6 col-xl-4 offset-xl-1">
+                <form>
+                    <div class="row">
+                        <div class="col-lg-4 col-md-4">
+                            <div class="section-title">
+                                <h4>Register</h4>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Email input -->
+                    <div class="form-outline mb-4">
+                        <input @bind="Email" type="email" id="form3Example3" class="form-control form-control-lg"
+                               placeholder="Enter a valid email address" />
+                        <label class="form-label" for="form3Example3">Email address</label>
+                    </div>
+                    <!-- Email input -->
+                    <div class="form-outline mb-4">
+                        <input @bind="Password" type="password" id="form3Example3" class="form-control form-control-lg"
+                               placeholder="Enter a valid password address" />
+                        <label class="form-label" for="form3Example3">Password</label>
+                    </div>
+                    <!-- Email input -->
+                    <div class="form-outline mb-4">
+                        <input @bind="Fullname" type="text" id="form3Example3" class="form-control form-control-lg"
+                               placeholder="Enter a valid fullname address" />
+                        <label class="form-label" for="form3Example3">Full name</label>
+                    </div>
+                    <!-- Email input -->
+                    <div class="form-outline mb-4">
+                        <input @bind="Phone" type="text" id="form3Example3" class="form-control form-control-lg"
+                               placeholder="Enter a valid phone address" />
+                        <label class="form-label" for="form3Example3">Phone number</label>
+                    </div>
+
+                    <!-- Password input -->
+                    <div class="form-outline mb-3">
+                        <input @bind="Address" type="text" id="form3Example4" class="form-control form-control-lg"
+                               placeholder="Enter a valid address address" />
+                        <label class="form-label" for="form3Example4">Address</label>
+                    </div>
+
+                    <div class="text-center text-lg-start mt-4 pt-2">
+                        <button @onclick="@(e => handleRegister())" type="button" class="btn btn-danger btn-lg"
+                                style="padding-left: 2.5rem; padding-right: 2.5rem;">
+                            Register
+                        </button>
+                        <p class="small fw-bold mt-2 pt-1 mb-0">
+                            You have an account? <a href="login"
+                                                    class="link-danger">Login</a>
+                        </p>
+                    </div>
+
+                </form>
+            </div>
+        </div>
+    </div>
+
+</section>
+
+@code {
+
+    private string? Email  { get; set; }
+    private string? Password { get; set; }
+    private string? Fullname { get; set; }
+    private string? Phone { get; set; }
+    private string? Address { get; set; }
+    private Entities.Account account = new Entities.Account();
+    private Entities.Account account1;
+    private Entities.Customer customer = new Entities.Customer();
+
+    protected override void OnInitialized()
+    {
+
+    }
+
+    private async void handleRegister()
+    {
+        account.Username = Email;
+        account.Password = Password;
+        account.Status = 1;
+        account.Permission = 0;
+        account.CreatedDate = DateTime.Now;
+        account1 = AccountService.Add(account);
+        if(account1 != null)
+        {
+            customer.Name = Fullname;
+            customer.Phone = Phone;
+            customer.Email = Email;
+            customer.Address = Address;
+            customer.AccountId = account1.Id;
+            CustomerService.Add(customer);
+            await _message.Success("Tạo tài khoản thành công");
+            NavigationManager.NavigateTo("login");
+        }
+        else
+        {
+            await _message.Error("Tạo tài khoản thất bại !!!");
+        }
+    }
+}

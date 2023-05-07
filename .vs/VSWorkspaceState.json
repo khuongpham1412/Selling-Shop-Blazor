@@ -1,0 +1,16 @@
+{
+  "ExpandedNodes": [
+    "",
+    "\\BlazorShop",
+    "\\BlazorShop\\Pages",
+    "\\BlazorShop\\Pages\\Admin",
+    "\\BlazorShop\\Pages\\Customer",
+    "\\BlazorShop\\Service",
+    "\\BlazorShop\\Service\\ServiceImp",
+    "\\BlazorShop\\Shared",
+    "\\BlazorShop\\wwwroot",
+    "\\BlazorShop\\wwwroot\\css"
+  ],
+  "SelectedNode": "\\BlazorShop.sln",
+  "PreviewInSolutionExplorer": false
+}

@@ -1,0 +1,187 @@
+﻿@page "/admin/customers"
+@using BlazorShop.Entities
+@using BlazorColorPicker
+@using BlazorShop.Model
+@using BlazorShop.Core.constant
+@inject Blazored.SessionStorage.ISessionStorageService session
+@inject BlazorShop.Service.ICustomerService CustomerService
+@inject BlazorShop.Service.IAccountService AccountService
+@inject NavigationManager NavigationManager
+@inject ModalService _modalService
+@layout AdminLayout
+@if (customers == null)
+{
+    <div class="loading"><Icon Type="loading" Height="40px" Width="40px" Theme="outline" /></div>
+}
+else
+{
+    <div class="d-flex justify-content-between">
+        <h4 style="display: inline-block;">Quản lý Khách hàng</h4>
+        
+    </div>
+    <Table @ref="table"
+       TItem="Customer"
+       DataSource="@customers">
+        <Selection Key="@context.Id" />
+         <ActionColumn Title="Username">
+            @AccountService.GetAccountFromId(@context.AccountId).Username
+        </ActionColumn>
+        <Column Title="Tên Khách hàng" @bind-Field="@context.Name" Sortable />
+        <Column Title="SDT" @bind-Field="@context.Phone" Sortable />
+        <Column Title="Email" @bind-Field="@context.Email" Sortable />
+        <Column Title="Địa chỉ" @bind-Field="@context.Address" Sortable />
+         <ActionColumn Title="Create Date">
+            @AccountService.GetAccountFromId(@context.AccountId).CreatedDate
+        </ActionColumn>
+        <ActionColumn Title="Active">
+           @if(@AccountService.GetAccountFromId(@context.AccountId).Status == 1)
+            {
+                <button @onclick="@(e => updateStatus(@context.AccountId,1))" type="button" class="btn btn-success">Active</button>
+            }
+            else
+            {
+                <button @onclick="@(e => updateStatus(@context.AccountId,0))" type="button" class="btn btn-danger">Block</button>
+            }
+
+               
+        </ActionColumn>
+        
+    </Table>
+    <Modal Title="@title"
+       Visible="@_visibleDelete"
+       OnOk="@HandleDelete"
+       OkType="danger"
+       OnCancel="@(()=>_visibleDelete = false)"
+       MaxBodyHeight="@("30vh")"
+       WrapClassName="modal-delete">
+        <div>
+            <p>
+                Bạn có chắc muốn xóa Khách hàng này?
+            </p>
+        </div>
+    </Modal>
+    <Modal Title="@(isUpdate ? titleUpdate : titleAdd)"
+       Visible="@_visibleFormAddUpdate"
+       OnOk="@(isUpdate ? HandleUpdateColor : HandleAddColor)"
+       OnCancel="@(()=>_visibleFormAddUpdate = false)"
+       MaxBodyHeight="@("50vh")">
+        <Form Model="@customer"
+          LabelColSpan="8"
+          WrapperColSpan="16">
+           
+   
+            <FormItem Label="Tên Khách hàng">
+                <Input @bind-Value="@context.Name" />
+            </FormItem>
+            <FormItem Label="SDT">
+                <Input Type="number" @bind-Value="@context.Phone" />
+            </FormItem>
+            <FormItem Label="Email">
+                <Input @bind-Value="@context.Email" />
+            </FormItem>
+            <FormItem Label="Địa chỉ">
+                <Input @bind-Value="@context.Address" />
+            </FormItem>
+        </Form>
+        <div>
+        </div>
+    </Modal>
+}
+
+
+@code {
+    int[] a = { PermissionAccount.ADMIN };
+    List<Customer> customers = new List<Customer>();
+    Customer customer = new Customer();
+    Account account = new Account();
+    string idDelete = "";
+    string title = "Cảnh Báo !!!";
+    string titleAdd = "Thêm Khách hàng";
+    string titleUpdate = "Sửa Khách hàng";
+    bool _visibleDelete = false;
+    bool _visibleFormAddUpdate = false;
+    bool isUpdate = false;
+    ITable table;
+    protected override void OnInitialized()
+    {
+        getData();
+    }
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await checkRole(a);
+        }
+    }
+    private void getData()
+    {
+        customers = CustomerService.GetAllCustomers();
+    }
+    private void showConfirmDelete(string id)
+    {
+        idDelete = id;
+        _visibleDelete = true;
+    }
+    private void HandleDelete(MouseEventArgs e)
+    {
+        customers = customers.Where(x => x.Id != idDelete).ToList();
+        bool s = CustomerService.Delete(idDelete);
+        _visibleDelete = false;
+    }
+    private void showFormAdd()
+    {
+        isUpdate = false;
+        customer = new Customer();
+        _visibleFormAddUpdate = true;
+    }
+    private void showFormUpdate(Customer colorUpdate)
+    {
+        isUpdate = true;
+        customer = colorUpdate;
+        _visibleFormAddUpdate = true;
+    }
+    private void HandleAddColor(MouseEventArgs e)
+    {
+        CustomerService.Add(customer);
+        getData();
+        _visibleFormAddUpdate = false;
+    }
+    private void HandleUpdateColor(MouseEventArgs e)
+    {
+        CustomerService.Update(customer);
+        getData();
+        _visibleFormAddUpdate = false;
+    }
+    public async Task checkRole(int[] a)
+    {
+        SessionUser sessionUser;
+        sessionUser = await session.GetItemAsync<SessionUser>(SessionKey.USER);
+        if (sessionUser != null)
+        {
+            if (!a.Contains(sessionUser.Permission))
+            {
+                NavigationManager.NavigateTo("/admin/login");
+            }
+        }
+        else
+        {
+            NavigationManager.NavigateTo("/admin/login"); 
+        }
+
+    }
+
+    private async void updateStatus(string id, int status)
+    {
+        //SessionUser sessionUser = await session.GetItemAsync<SessionUser>(SessionKey.USER);
+        //Console.WriteLine("hello: " + sessionUser.Email);
+        if(status == 1)
+        {
+            AccountService.UpdateStatus(id, 0);
+        }
+        else
+        {
+            AccountService.UpdateStatus(id, 1);
+        }
+    }
+}
+

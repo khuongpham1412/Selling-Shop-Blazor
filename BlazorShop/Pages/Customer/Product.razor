@@ -1,0 +1,306 @@
+﻿@page "/shop/{Id}"
+@layout CustomerLayout
+@inject MessageService _message
+@inject Blazored.SessionStorage.ISessionStorageService session
+@inject BlazorShop.Service.IProductService ProductService
+@inject BlazorShop.Service.ISizeColorProductService SizeColorProductService
+@using BlazorShop.Core.constant
+@inject NavigationManager NavigationManager
+@using BlazorShop.Model
+
+ <section class="product-details spad">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-6">
+                    <div class="product__details__pic">
+                        <div class="product__details__pic__left product__thumb nice-scroll">
+                           <!-- <a class="pt active" href="#product-1">
+                                
+                            </a>-->
+                                <img class="pt active" @onclick=@(e=> SelectImage(@product.Images[0].Path)) src="@product.Images[0].Path" alt="">
+                           
+                                <img class="pt active" @onclick=@(e=> SelectImage(@product.Images[1].Path)) src="@product.Images[1].Path" alt="">
+                           
+                                <img class="pt active" @onclick=@(e=> SelectImage(@product.Images[2].Path)) src="@product.Images[2].Path" alt="">
+                                <img class="pt active" @onclick=@(e=> SelectImage(@product.Images[3].Path)) src="@product.Images[3].Path" alt="">
+                        </div>
+                        <div class="product__details__slider__content">
+                            <div>
+
+                                <img class="product__big__img" src="@ImageBig" alt="">
+                                <!-- <img class="product__big__img" src="@product.Images[1].Path" alt="">
+                                <img class="product__big__img" src="@product.Images[2].Path" alt="">
+                                <img class="product__big__img" src="@product.Images[3].Path" alt="">-->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-6">
+                    <div class="product__details__text">
+                        <h3>@product.Name</h3>
+                        <div class="rating">
+                            <i class="fa fa-star"></i>
+                            <i class="fa fa-star"></i>
+                            <i class="fa fa-star"></i>
+                            <i class="fa fa-star"></i>
+                            <i class="fa fa-star"></i>
+                            <span>( 138 reviews )</span>
+                        </div>
+                       @if(@product.PriceSale != null)
+                        {
+                        <div class="product__details__price">$ @product.PriceSale <span>$ @product.Price</span></div>
+                        }
+                        else
+                        {
+                            <div class="product__details__price">$ @product.Price</div>
+                        }
+
+                        <p>@product.Description</p>
+                        <div class="product__details__button">
+                            <div class="quantity">
+                                <span>Quantity:</span>
+                                <div class="pro-qty">
+                                    <input type="number" value="1" @oninput="@(ui => { Quantity = (string) ui.Value;})" />
+                                </div>
+                            </div>
+                            <div @onclick=@(e => Order()) class="cart-btn"><span class="icon_bag_alt">
+                            </span> Add to cart</div>
+                           
+                        </div>
+                        <div class="product__details__widget">
+                            <ul>
+                               
+                                <li>
+                                    <span>Available color:</span>
+                                    <div class="color__checkbox">
+                                        @for(int i = 0; i< @product.ColorDBs.Count();i++)
+                                        {
+                                             var index = i;
+                                            <label for="@product.ColorDBs[i].Id" @onclick=@(e => SelectColor(@product.ColorDBs[index].Id,@product.ColorDBs[index].Code))>
+                                            <input type="radio" name="color__radio" id="@product.ColorDBs[i].Id">
+                                            <span class="checkmark" style="width:20px;height:20px;border-radius:50%;background-color:@product.ColorDBs[i].Code;"></span>
+                                            </label>
+                                       
+                                           <!-- <label for="@product.ColorDBs[i].Id" @onclick=@(e => SelectColor(@product.ColorDBs[index]))>
+                                                <input type="radio" id=""@product.ColorDBs[i].Id">
+                                              @product.ColorDBs[i].Name
+                                                 </label> -->
+                                        }
+                                    </div>
+                                </li>
+                                <li>
+                                    <span>Available size:</span>
+                                    <div class="size__btn">
+                                        @for(int i = 0; i< @product.Sizes.Count();i++)
+                                        {
+                                            var index = i;
+
+                                            <label for="@product.Sizes[i].Id" @onclick=@(e => SelectSize(@product.Sizes[index].Id,@product.Sizes[index].Name))>
+                                                <input type="radio" id="@product.Sizes[i].Id">
+                                               @product.Sizes[i].Name
+                                             </label>
+                                        }
+                                    </div>
+                                </li>
+                              
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-lg-12">
+                    <div class="product__details__tab">
+                        <ul class="nav nav-tabs" role="tablist">
+                            <li class="nav-item">
+                                <a class="nav-link active" data-toggle="tab" href="#tabs-1" role="tab">Description</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" data-toggle="tab" href="#tabs-2" role="tab">Specification</a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" data-toggle="tab" href="#tabs-3" role="tab">Reviews ( 2 )</a>
+                            </li>
+                        </ul>
+                        <div class="tab-content">
+                            <div class="tab-pane active" id="tabs-1" role="tabpanel">
+                                <h6>Description</h6>
+                                <p>Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut loret fugit, sed
+                                    quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt loret.
+                                    Neque porro lorem quisquam est, qui dolorem ipsum quia dolor si. Nemo enim ipsam
+                                    voluptatem quia voluptas sit aspernatur aut odit aut loret fugit, sed quia ipsu
+                                    consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Nulla
+                                consequat massa quis enim.</p>
+                                <p>Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Aenean commodo ligula eget
+                                    dolor. Aenean massa. Cum sociis natoque penatibus et magnis dis parturient montes,
+                                    nascetur ridiculus mus. Donec quam felis, ultricies nec, pellentesque eu, pretium
+                                quis, sem.</p>
+                            </div>
+                            <div class="tab-pane" id="tabs-2" role="tabpanel">
+                                <h6>Specification</h6>
+                                <p>Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut loret fugit, sed
+                                    quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt loret.
+                                    Neque porro lorem quisquam est, qui dolorem ipsum quia dolor si. Nemo enim ipsam
+                                    voluptatem quia voluptas sit aspernatur aut odit aut loret fugit, sed quia ipsu
+                                    consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Nulla
+                                consequat massa quis enim.</p>
+                                <p>Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Aenean commodo ligula eget
+                                    dolor. Aenean massa. Cum sociis natoque penatibus et magnis dis parturient montes,
+                                    nascetur ridiculus mus. Donec quam felis, ultricies nec, pellentesque eu, pretium
+                                quis, sem.</p>
+                            </div>
+                            <div class="tab-pane" id="tabs-3" role="tabpanel">
+                                <h6>Reviews ( 2 )</h6>
+                                <p>Nemo enim ipsam voluptatem quia voluptas sit aspernatur aut odit aut loret fugit, sed
+                                    quia consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt loret.
+                                    Neque porro lorem quisquam est, qui dolorem ipsum quia dolor si. Nemo enim ipsam
+                                    voluptatem quia voluptas sit aspernatur aut odit aut loret fugit, sed quia ipsu
+                                    consequuntur magni dolores eos qui ratione voluptatem sequi nesciunt. Nulla
+                                consequat massa quis enim.</p>
+                                <p>Lorem ipsum dolor sit amet, consectetuer adipiscing elit. Aenean commodo ligula eget
+                                    dolor. Aenean massa. Cum sociis natoque penatibus et magnis dis parturient montes,
+                                    nascetur ridiculus mus. Donec quam felis, ultricies nec, pellentesque eu, pretium
+                                quis, sem.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+@code {
+    [Parameter]
+    public string Id { get; set; }
+    Entities.Product product;
+    private string ColorId ;
+    private string Code ;
+    private string SizeId ;
+    private string SizeName ;
+    string ImageBig ;
+
+    private string Quantity;
+    SessionCart sessionCart = new SessionCart();
+    SessionUser sessionUser = new SessionUser();
+
+    List<Entities.Size> sizes = new List<Entities.Size>();
+    List<SessionCart> sessionCarts = new List<SessionCart>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        //sessionCarts = await session.GetItemAsync<List<SessionCart>>(SessionKey.CART);
+        if(sessionCarts == null)
+        {
+            sessionCarts = new List<SessionCart>();
+        }
+        product = ProductService.GetProductFromId(Id);
+        ImageBig = product.Images[0].Path;
+        //getData();
+    }
+
+    private void getData()
+    {
+
+
+        // Console.WriteLine(product.ColorDBs.Count());
+    }
+
+    private void SelectColor(string id, string code)
+    {
+        Code = code;
+        ColorId = id;
+        //sizes = ProductService.FindSizeFromColor(Id, id).Sizes.ToList();
+        // Console.WriteLine(sizes.Count());
+    }
+
+    private void SelectSize(string id, string name)
+    {
+        SizeId = id;
+        SizeName = name;
+        //sizes = ProductService.FindSizeFromColor(Id, id).Sizes.ToList();
+        //Console.WriteLine(sizes.Count());
+    }
+
+
+
+    private async void Order()
+    {
+        sessionUser = await session.GetItemAsync<SessionUser>(SessionKey.CUSTOMER);
+        if(sessionUser != null)
+        {
+            if(Quantity == null)
+            {
+                Quantity = "1";
+            }
+            if (ColorId == null)
+            {
+                await _message.Error("Bạn cần chọn màu");
+            }
+            else if (SizeId == null)
+            {
+                await _message.Error("Bạn cần chọn size");
+            }
+            else if (Int32.Parse(Quantity) < 1)
+            {
+                await _message.Error("Bạn cần nhập số lượng chính xác");
+            }
+            else
+            {
+                if (SizeColorProductService.GetInfo(Id, ColorId, SizeId).Quantity < Int32.Parse(Quantity))
+                {
+                    await _message.Error("Vượt quá giới hạn số lượng sản phẩm");
+                }
+                else
+                {
+                    sessionCarts = await session.GetItemAsync<List<SessionCart>>(SessionKey.CART);
+
+
+                    if (sessionCarts == null)
+                    {
+                        sessionCarts = new List<SessionCart>();
+                        sessionCart.ProductId = Id;
+                        sessionCart.ColorId = Code;
+                        sessionCart.SizeId = SizeName;
+                        sessionCart.Amount = Int32.Parse(Quantity);
+                        sessionCarts.Add(sessionCart);
+                    }
+                    else
+                    {
+                        if (!CheckProduct(sessionCarts))
+                        {
+                            sessionCart.ProductId = Id;
+                            sessionCart.ColorId = Code;
+                            sessionCart.SizeId = SizeName;
+                            sessionCart.Amount = Int32.Parse(Quantity);
+                            sessionCarts.Add(sessionCart);
+                        }
+                    }
+
+                    await session.SetItemAsync(SessionKey.CART, sessionCarts);
+
+                    await _message.Success("Đã thêm sản phẩm vào giỏ hàng");
+                }
+            }
+        }
+        else
+        {
+            NavigationManager.NavigateTo("login");
+        }
+
+    }
+
+    private bool CheckProduct(List<SessionCart> sessionCarts)
+    {
+        for(int i=0;i<sessionCarts.Count();i++)
+        {
+            if(sessionCarts[i].ProductId == Id && sessionCarts[i].ColorId == Code && sessionCarts[i].SizeId == SizeName)
+            {
+                sessionCarts[i].Amount = sessionCarts[i].Amount + Int32.Parse(Quantity);
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private void SelectImage(string image)
+    {
+        ImageBig = image;
+    }
+}

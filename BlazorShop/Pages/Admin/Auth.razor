@@ -1,0 +1,133 @@
+﻿@page "/admin/login"
+@inject BlazorShop.Service.IAccountService AccountService
+@inject BlazorShop.Service.IEmployeeService EmployeeService
+@inject Blazored.SessionStorage.ISessionStorageService session
+@inject MessageService _message
+@inject NavigationManager NavigationManager
+@using BlazorShop.Core.constant
+@using BlazorShop.Entities
+@using BlazorShop.Model
+@layout AuthLayout
+<div class="d-flex justify-content-center align-items-center min-vh-100">
+    <div style="width:460px;">
+        <div class="text-center">
+            <a href="/" class="active"><img src="img/logo.png" alt="logo"></a>
+        </div>
+        <br />
+        <br />
+        <Input Placeholder="username" Size="@InputSize.Large" @bind-Value="@username">
+        <Prefix>
+            <Icon Type="user" />
+        </Prefix>
+        </Input>
+        <br />
+        <br />
+        <InputPassword 
+			@ref=@_inputPassword
+			@bind-Value="@password" 
+			Placeholder="large Password" 
+			Size="@InputSize.Large" 
+			OnPressEnter="(e)=>Submit()" 
+			IconRender="@actionSetting(() => OnClick(), attributes)" 
+			ShowPassword="@visible">
+            <Prefix>
+            <Icon Type="lock" Theme="outline" />
+        </Prefix>
+        </InputPassword>
+        <br />
+        <br />
+        <div class="d-flex justify-content-between">
+            <div>
+                <Checkbox @bind-Checked="isChecked">Remember me</Checkbox>
+            </div>
+            <div>
+                <NavLink href="/">Forgot password</NavLink>
+            </div>
+        </div>
+        <br />
+        <br />
+        <div id="button-block-demo">
+            <Button Type="@ButtonType.Primary" OnClick="(e)=>Submit()" Block>Login</Button>
+        </div>
+
+    </div>
+</div>
+
+<style>
+    #button-block-demo > * {
+        margin-bottom: 12px;
+    }
+</style>
+
+@code {
+    private string username { get; set; }
+    private string password { get; set; }
+    bool isChecked = true;
+    RenderFragment actionSetting(Func<Task> clickActionAsync, Dictionary<string, object> iconAttributes) =>
+    @<Icon @attributes="@iconAttributes" OnClick="@clickActionAsync" />
+    ;
+
+    private bool visible = false;
+    private InputPassword _inputPassword;
+
+    Dictionary<string, object> hideAttributes  = new() {
+        ["Type"] = "eye-invisible",        
+        ["Style"] = ""
+    };
+
+    Dictionary<string, object> showAttributes  = new() {        
+        ["Type"] = "eye",        
+        ["Style"] = "color: #1890ff"
+    };
+
+    Dictionary<string, object> attributes = new() {
+        ["Class"] = "custom-password-icon",
+        ["Type"] = "eye-invisible",
+        ["Theme"] = "outline"
+    };
+
+    private async Task Submit()
+    {
+        Console.WriteLine($"username: {username}");
+        Console.WriteLine($"password: {password}");
+        Account login = AccountService.Login(username, password);
+        if (login != null)
+        {
+            if (login.Permission != PermissionAccount.CUSTOMER)
+            {
+                Employee employee = EmployeeService.GetEmployeeFromAccountId(login.Id);
+                SessionUser sessionUser = new SessionUser();
+                sessionUser.Id = login.Id;
+                sessionUser.UserName = login.Username;
+                sessionUser.Name = employee.Name;
+                sessionUser.Email = employee.Email;
+                sessionUser.Permission = login.Permission;
+                await session.SetItemAsync(SessionKey.USER,sessionUser);
+                
+                await _message.Success("Đăng nhập thành công");
+                NavigationManager.NavigateTo("/admin");
+
+            }
+            else
+            {
+                await _message.Error("Bạn không phải người điều hành!!");
+            }
+        }else
+            await _message.Error("Sai Tên đăng nhập hoặc mặt khẩu!");
+        
+
+    }
+
+    private async Task OnClick() 
+    {
+        Console.WriteLine("Custom icon clicked");
+        visible = !visible;
+        if (visible)
+            attributes = showAttributes;
+        else
+            attributes = hideAttributes;
+        await _inputPassword.Focus();
+    }
+
+
+}

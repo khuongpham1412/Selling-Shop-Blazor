@@ -1,0 +1,464 @@
+﻿@page "/admin/products"
+@using BlazorShop.Entities
+@using BlazorColorPicker
+@using System.ComponentModel.DataAnnotations
+@using BlazorShop.Core.constant
+@inject IJSRuntime JS
+@inject BlazorShop.Service.IProductService ProductService
+@inject BlazorShop.Service.ICategoryService CategoryService
+@inject BlazorShop.Service.ISizeService SizeService
+@inject BlazorShop.Service.IColorService ColorService
+@inject BlazorShop.Service.IImageService ImageService
+@inject BlazorShop.Service.ISizeColorProductService SizeColorProductService
+@inject MessageService _message
+@inject ModalService _modalService
+@layout AdminLayout
+@using System.ComponentModel.DataAnnotations
+@using System.Threading
+@using BlazorShop.Model
+@using Microsoft.AspNetCore.Hosting
+@inject IWebHostEnvironment env
+@implements IDisposable
+@using System.IO
+@using System.Text.Json;
+@using BlazorShop.Model
+@inject Blazored.SessionStorage.ISessionStorageService session
+@inject NavigationManager NavigationManager
+
+@if (products == null)
+{
+    <div class="loading"><Icon Type="loading" Height="40px" Width="40px" Theme="outline" /></div>
+}
+else
+{
+    <div class="d-flex justify-content-between">
+        <h4 style="display: inline-block;">Quản lý Sản phẩm</h4>
+        <div>
+            <Button Type="@ButtonType.Primary" OnClick="@showFormAdd">Thêm</Button>
+            <Tooltip Title="@IconType.Outline.Search">
+                <Button Type="@ButtonType.Primary" Icon="@IconType.Outline.Search" />
+            </Tooltip>
+        </div>
+    </div>
+    <Table @ref="table"
+       TItem="Product"
+       DataSource="@products">
+        <Selection Key="@context.Id" />
+        <Column Title="Tên Sản phẩm" @bind-Field="@context.Name" Sortable />
+        <Column Title="Giá bán" @bind-Field="@context.Price" Sortable />
+        <Column Title="Giá nhập" @bind-Field="@context.PriceImport" Sortable />
+        <Column Title="Tồn kho" @bind-Field="@context.Amount" Sortable />
+        <ActionColumn Title="Chỉnh sửa">
+            <Space>
+                <SpaceItem>
+                    <Tooltip Title="@IconType.Outline.Edit">
+                        <Button Type="@ButtonType.Primary" Shape="@ButtonShape.Circle" Icon="@IconType.Outline.Edit" OnClick="@(()=>showFormUpdate(context))" />
+                    </Tooltip>
+                </SpaceItem><SpaceItem>
+                    <Tooltip Title="@IconType.Outline.Delete">
+                        <Button Danger Type="@ButtonType.Primary" Shape="@ButtonShape.Circle" Icon="@IconType.Outline.Delete" OnClick="@(()=>showConfirmDelete(context.Id))" />
+                    </Tooltip>
+                </SpaceItem>
+            </Space>
+        </ActionColumn>
+    </Table>
+    <Modal Title="@title"
+       Visible="@_visibleDelete"
+       OnOk="@HandleDelete"
+       OkType="danger"
+       OnCancel="@(()=>_visibleDelete = false)"
+       MaxBodyHeight="@("30vh")"
+       WrapClassName="modal-delete">
+        <div>
+            <p>
+                Bạn có chắc muốn xóa Sản phẩm này?
+            </p>
+        </div>
+    </Modal>
+    <Modal Title="@(isUpdate ? titleUpdate : titleAdd)"
+       Visible="@_visibleFormAddUpdate"
+       OnOk="@(isUpdate ? HandleUpdateProduct : HandleAddProduct)"
+       OnCancel="@(()=>_visibleFormAddUpdate = false)"
+       MaxBodyHeight="@("70vh")"
+       Width="@("600px")">
+        <Form Model="@product"
+          LabelColSpan="8"
+          WrapperColSpan="16">
+
+            <FormItem Label="Tên sản phẩm">
+                <Input @bind-Value="@context.Name" />
+            </FormItem>
+            <FormItem Label="Loại sản phẩm">
+                <Select DataSource="@categories"
+                    @bind-Value="@categoryName"
+                    LabelName="@nameof(Category.Name)"
+                    ValueName="@nameof(Category.Name)"
+                    Placeholder="Chọn Loại sản phẩm"
+                    DefaultActiveFirstItem="false"
+                    OnSelectedItemChanged="OnSelectionChange"
+                    EnableSearch>
+                </Select>
+            </FormItem>
+            <FormItem Label="Kích thước (Size)">
+                <Select Mode="multiple"
+                    @bind-Values="@sizesOfProduct"
+                    Placeholder="Please select"
+                    TItemValue="Size"
+                    TItem="Size"
+                    Size="@_sizeValue"
+                    Style="width: 100%; margin-bottom: 8px;"
+                    OnSelectedItemsChanged="OnSelectedSizesChangedHandler">
+                    <SelectOptions>
+                        @foreach (var item in sizes)
+                    {
+                        <SelectOption TItemValue="Size" TItem="Size" Value=@item Label=@item.Name />
+                    }
+                </SelectOptions>
+            </Select>
+        </FormItem>
+        <FormItem Label="Màu sắc">
+            <Select Mode="multiple"
+                    @bind-Values="@colorsOfProduct"
+                    Placeholder="Please select"
+                    TItemValue="ColorDB"
+                    TItem="ColorDB"
+                    Size="@_sizeValue"
+                    Style="width: 100%; margin-bottom: 8px;"
+                    OnSelectedItemsChanged="OnSelectedColorsChangedHandler">
+                <SelectOptions>
+                    @foreach (var item in colors)
+                    {
+                        <SelectOption TItemValue="ColorDB" TItem="ColorDB" Value=@item Label=@item.Name />
+                    }
+                </SelectOptions>
+            </Select>
+        </FormItem>
+        <FormItem Label="Mô tả sản phẩm">
+            <TextArea @bind-Value="@context.Description" />
+        </FormItem>
+        <FormItem Label="Giá nhập">
+            <AntDesign.InputNumber @bind-Value="@context.PriceImport" />
+        </FormItem>
+        <FormItem Label="Giá bán">
+            <AntDesign.InputNumber @bind-Value="@context.Price" />
+        </FormItem>
+        <FormItem Label="Giá sale">
+            <AntDesign.InputNumber @bind-Value="@context.PriceSale" />
+        </FormItem>
+        @if (!isUpdate)
+        {
+            <FormItem Label="Số lượng hiện có">
+            <AntDesign.InputNumber @bind-Value="@context.Amount" />
+            </FormItem>
+        }
+        
+        <FormItem Label="Hình ảnh sản phẩm">
+            <div>
+                <form OnInvalidSubmit="onSubmitImage">
+                    <InputFile multiple id="filePicker" OnChange="onChangeImage" accept="image/*" style="display: none;" />
+                </form>
+
+                <div class="d-flex flex-wrap">
+                    @if (imageUrls.Count() > 0)
+                    {
+                        @foreach (var item in imageUrls)
+                        {
+                            <img class="rounded m-1" src="@item" width="70px" height="70px" />
+                        }
+                    }
+                    <label for="filePicker" class="rounded m-1" style="width:70px ;height:70px; display:flex; justify-content:center; align-items:center; background-color: #f5f5f5; border: 1px dashed #ccc;">
+                        <i class="fa fa-plus" style="color: #ccc"></i>
+                    </label>
+                </div>
+
+
+            </div>
+        </FormItem>
+    </Form>
+</Modal>
+    <Modal Visible="previewVisible"
+       Title="previewTitle"
+       OnCancel="()=> previewVisible=false">
+        <img style="width: 100%" src="@imgUrl" />
+    </Modal>
+
+}
+
+@code {
+    int[] a = { PermissionAccount.ADMIN };
+    List<Product> products = new List<Product>();
+    List<Category> categories = new List<Category>();
+    List<Size> sizes = new List<Size>();
+    List<ColorDB> colors = new List<ColorDB>();
+
+    Product product = new Product();
+    Category categoryOfProduct = new Category();
+    SizeColorProduct sizeColorProduct = new SizeColorProduct();
+    IEnumerable<Size> sizesOfProduct = new List<Size>();
+    IEnumerable<ColorDB> colorsOfProduct = new List<ColorDB>();
+    List<Entities.Image> imagesOfProduct = new List<Entities.Image>();
+
+    private string _sizeValue = AntSizeLDSType.Default;
+    List<string> _items;
+    string idDelete = "";
+    string title = "Cảnh Báo !!!";
+    string titleAdd = "Thêm Sản phẩm";
+    string titleUpdate = "Sửa Sản phẩm";
+    private string categoryName;
+    bool _visibleDelete = false;
+    bool _visibleFormAddUpdate = false;
+    bool isUpdate = false;
+    ITable table;
+    bool previewVisible = false;
+    string previewTitle = string.Empty;
+    string imgUrl = string.Empty;
+
+    // private EditContext editContext;
+    private FileUploadModel fileUpload;
+    private CancellationTokenSource cacellation = new CancellationTokenSource();
+    private IList<string> imageUrls = new List<string>();
+    private int Total;
+
+    protected override void OnInitialized()
+    {
+        getData();
+        cacellation = new CancellationTokenSource();
+        fileUpload = new FileUploadModel();
+        // editContext = new EditContext(fileUpload);
+    }
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await checkRole(a);
+        }
+    }
+    private void getData()
+    {
+        products = ProductService.GetAllProducts();
+        categories = CategoryService.GetAllCategories();
+        sizes = SizeService.GetAllSize();
+        colors = ColorService.GetAllColor();
+        foreach (Product s in products)
+        {
+            s.Category = categories.Where(x => s.CategoryId == x.Id).FirstOrDefault();
+        }
+    }
+
+    private void showConfirmDelete(string id)
+    {
+        idDelete = id;
+        _visibleDelete = true;
+    }
+    private void HandleDelete(MouseEventArgs e)
+    {
+        products = products.Where(x => x.Id != idDelete).ToList();
+        ProductService.Delete(idDelete);
+        ImageService.DeleteAll(idDelete);
+        SizeColorProductService.DeleteFromIdProduct(idDelete);
+        _visibleDelete = false;
+    }
+    private void showFormAdd()
+    {
+        isUpdate = false;
+        product = new Product();
+        categoryOfProduct = new Category();
+        categoryName = "";
+        imageUrls = new List<string>();
+        sizesOfProduct = new List<Size>();
+        colorsOfProduct = new List<ColorDB>();
+        imagesOfProduct = new List<Entities.Image>();
+        _visibleFormAddUpdate = true;
+    }
+    private void showFormUpdate(Product productUpdate)
+    {
+        isUpdate = true;
+        product = ProductService.GetProductFromId(productUpdate.Id);
+        sizesOfProduct = product.Sizes;
+        colorsOfProduct = product.ColorDBs;
+        categoryOfProduct = product.Category;
+        imagesOfProduct = product.Images;
+        imageUrls = new List<string>();
+        foreach (Entities.Image item in imagesOfProduct)
+        {
+            imageUrls.Add(item.Path);
+        }
+        categoryName = categoryOfProduct.Name;
+        _visibleFormAddUpdate = true;
+    }
+    private async void HandleAddProduct(MouseEventArgs e)
+    {
+        Console.WriteLine("colect if wait add getDaa close");
+        colectProduct();
+        Console.WriteLine("colect");
+
+        Product prd = ProductService.Add(product);
+
+
+
+        if (prd != null)
+        {
+            for(int i=0;i<product.Sizes.Count();i++)
+            {
+                for(int j=0;j<product.ColorDBs.Count();j++)
+                {
+                    sizeColorProduct.ProductId = prd.Id;
+                    sizeColorProduct.ColorId = product.ColorDBs[j].Id;
+                    sizeColorProduct.SizeId = product.Sizes[i].Id;
+                    sizeColorProduct.Quantity = product.Amount;
+                    SizeColorProductService.Add(sizeColorProduct);
+                }
+            }
+            Console.WriteLine("colect if");
+            await onSubmitImage();
+            Console.WriteLine("colect if wait");
+            ImageService.AddAll(imagesOfProduct);
+            Console.WriteLine("colect if wait add");
+        }
+
+        getData();
+        _visibleFormAddUpdate = false;
+        Console.WriteLine("colect if wait add getDaa");
+
+    }
+    private async void HandleUpdateProduct(MouseEventArgs e)
+    {
+        colectProduct();
+        Product prd = ProductService.Update(product);
+        if (prd != null)
+        {
+            await onSubmitImage();
+            ImageService.UpdateAll(imagesOfProduct);
+            SizeColorProductService.DeleteFromIdProduct(prd.Id);
+            for(int i=0;i<product.Sizes.Count();i++)
+            {
+                for(int j=0;j<product.ColorDBs.Count();j++)
+                {
+                    sizeColorProduct.ProductId = prd.Id;
+                    sizeColorProduct.ColorId = product.ColorDBs[j].Id;
+                    sizeColorProduct.SizeId = product.Sizes[i].Id;
+                    sizeColorProduct.Quantity = product.Amount;
+                    SizeColorProductService.Add(sizeColorProduct);
+                }
+            }
+            
+        }
+        getData();
+        _visibleFormAddUpdate = false;
+    }
+    private void colectProduct()
+    {
+        product.Category = categoryOfProduct;
+        product.Sizes = sizesOfProduct?.ToList();
+        product.ColorDBs = colorsOfProduct?.ToList();
+        
+        
+        //product.Images = imagesOfProduct?.ToList();
+
+    }
+    Func<object, object, bool> CompareWith = (a, b) =>
+    {
+        if (a is Category o1 && b is Category o2)
+        {
+            return o1.Name == o2.Name;
+        }
+        else
+        {
+            return false;
+        }
+    };
+    void OnSelectionChange(Category item)
+    {
+        categoryOfProduct = item;
+    }
+    private void OnSelectedItemChangedHandler(string value)
+    {
+        Console.WriteLine($"selected: ${value}");
+    }
+
+    private void OnSelectedColorsChangedHandler(IEnumerable<ColorDB> values)
+    {
+        if (values != null)
+            Console.WriteLine(colorsOfProduct.Count());
+    }
+    private void OnSelectedSizesChangedHandler(IEnumerable<Size> values)
+    {
+        if (values != null)
+            Console.WriteLine(sizesOfProduct.Count());
+    }
+
+    private async Task onSubmitImage()
+    {
+        imagesOfProduct = new List<Entities.Image>();
+        for (int i = 0; i < Total; i++)
+        {
+            var path = $"{env.WebRootPath}\\upload\\{fileUpload.Picture[i].Name}";
+            using var file = File.OpenWrite(path);
+            using var strem = fileUpload.Picture[i].OpenReadStream(968435456);
+            var buffer = new byte[4 * 1096];
+            int byteRead;
+            double totalRead = 0;
+            while ((byteRead = await strem.ReadAsync(buffer, cacellation.Token)) != 0)
+            {
+                totalRead += byteRead;
+                await file.WriteAsync(buffer, cacellation.Token);
+                StateHasChanged();
+            }
+            Entities.Image img = new Entities.Image();
+            img.Product = product;
+            img.Path = $"upload/{fileUpload.Picture[i].Name}";
+            if (i == 0)
+            {
+                img.IsDefault = true;
+            }
+            else
+            {
+                img.IsDefault = false;
+            }
+            imagesOfProduct.Add(img);
+
+        }
+        getData();
+        _visibleFormAddUpdate = false;
+
+    }
+    public void Dispose()
+    {
+        cacellation.Cancel();
+    }
+    private async Task onChangeImage(InputFileChangeEventArgs e)
+    {
+        imageUrls = new List<String>();
+        int maxFileSize = 1024 * 1024 * 15;
+        fileUpload.Picture = e.GetMultipleFiles(maxFileSize).ToArray();
+        var format = "image/png";
+        Total = e.GetMultipleFiles(maxFileSize).Count();
+        foreach (var item in e.GetMultipleFiles(maxFileSize))
+        {
+            var resizedImageFile = await item.RequestImageFileAsync(format, 100, 100);
+            var buffer = new byte[resizedImageFile.Size];
+            await resizedImageFile.OpenReadStream().ReadAsync(buffer);
+            var imageUrl = $"data:{format};base64,{Convert.ToBase64String(buffer)}";
+            imageUrls.Add(imageUrl);
+            //editContext.NotifyFieldChanged(FieldIdentifier.Create(() => fileUpload.Picture));
+        }
+    }
+    public async Task checkRole(int[] a)
+    {
+        SessionUser sessionUser;
+        sessionUser = await session.GetItemAsync<SessionUser>(SessionKey.USER);
+        if ( sessionUser != null)
+        {
+            if (!a.Contains(sessionUser.Permission))
+            {
+                NavigationManager.NavigateTo("/admin/login");
+            }
+        }
+        else
+        {
+            NavigationManager.NavigateTo("/admin/login");
+        }
+
+    }
+}
+

@@ -1,0 +1,110 @@
+﻿@page "/admin/bills"
+@using BlazorShop.Core.constant
+@using BlazorShop.Entities
+@using BlazorShop.Model
+@inject BlazorShop.Service.IBillService BillService;
+@inject BlazorShop.Service.IEmployeeService EmployeeService;
+@inject Blazored.SessionStorage.ISessionStorageService session
+@inject NavigationManager NavigationManager
+@layout AdminLayout
+
+
+@if (hoadon == null)
+{
+    <div class="loading"><Icon Type="loading" Height="40px" Width="40px" Theme="outline" /></div>
+}
+else
+{
+    <div class="d-flex justify-content-between">
+        <h4 style="display: inline-block;">Quản lý hóa đơn</h4>
+        <div>
+            <Tooltip Title="@IconType.Outline.Search">
+                <Button Type="@ButtonType.Primary" Icon="@IconType.Outline.Search" />
+            </Tooltip>
+        </div>
+    </div>
+    <Table @ref="table"
+       TItem="Bill"
+       DataSource="@hoadon">
+        <Selection Key="@context.Id" />
+        <Column Title="ID Hóa Đơn" @bind-Field="@context.Id" Sortable />
+        <Column Title="ID Khách Hàng" @bind-Field="@context.CustomerId" Sortable />
+        <Column Title="ID Nhân Viên" @bind-Field="@context.EmployeeId" Sortable />
+        <Column Title="Tổng tiền" @bind-Field="@context.Total" Sortable />
+        <Column Title="Ngày Lập Hóa Đơn" @bind-Field="@context.CreatedDate" Sortable />
+         <ActionColumn Title="Chi Tiết">
+               <a href="admin/bills/billdetail/@context.Id">Chi tiết</a>
+        </ActionColumn>
+
+        <ActionColumn Title="Trạng Thái">
+                @if(@context.StatusBill == 0)
+                {
+                    <button @onclick="@(e => updateStatus(@context.Id,0))" type="button" class="btn btn-success">Chưa xác nhận</button>
+                }
+                else
+                {
+                    <button @onclick="@(e => updateStatus(@context.Id,1))" type="button" class="btn btn-danger" disabled>Đã xác nhận</button>
+                }
+        </ActionColumn>
+    </Table>
+   
+}
+
+
+@code {
+    int[] a = { PermissionAccount.ADMIN };
+    SessionUser sessionUser;
+    List<Bill> hoadon = new List<Bill>();
+    Bill Bill = new Bill();
+    public string EmployeeId { get; set; }
+    ITable table;
+    protected override void OnInitialized()
+    {
+        getData();
+    }
+
+    private async void getData()
+    {
+        hoadon = BillService.getAllBills();
+    }
+
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            sessionUser = await session.GetItemAsync<SessionUser>(SessionKey.USER);
+            await checkRole(a);
+        }
+    }
+    public async Task checkRole(int[] a)
+    {
+        
+        if (sessionUser != null)
+        {
+            if (!a.Contains(sessionUser.Permission))
+            {
+                NavigationManager.NavigateTo("/admin/login");
+            }
+        }
+        else
+        {
+            NavigationManager.NavigateTo("/admin/login"); 
+        }
+
+    }
+
+    private async void updateStatus(string id, int status)
+    {
+        
+        if(status == 1)
+        {
+           
+            BillService.UpdateStatus(id, 0, " ");
+        }
+        else
+        {
+            BillService.UpdateStatus(id, 1, EmployeeService.GetEmployeeFromAccountId(sessionUser.Id).Id);
+        }
+    }
+}

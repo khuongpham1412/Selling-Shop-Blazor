@@ -1,0 +1,186 @@
+﻿@page "/admin/colors"
+@using BlazorShop.Entities
+@using BlazorColorPicker
+@using BlazorShop.Model
+@using BlazorShop.Core.constant
+@inject Blazored.SessionStorage.ISessionStorageService session
+@inject BlazorShop.Service.IColorService ColorService
+@inject ModalService _modalService
+@inject NavigationManager NavigationManager
+@layout AdminLayout
+@if (colorDBs == null)
+{
+    <div class="loading"><Icon Type="loading" Height="40px" Width="40px" Theme="outline" /></div>
+}
+else
+{
+    <div class="d-flex justify-content-between">
+        <h4 style="display: inline-block;">Quản lý Màu sản phẩm</h4>
+        <div>
+            <Button Type="@ButtonType.Primary" OnClick="@showFormAdd">Thêm</Button>
+            <Tooltip Title="@IconType.Outline.Search">
+                <Button Type="@ButtonType.Primary" Icon="@IconType.Outline.Search" />
+            </Tooltip>
+        </div>
+    </div>
+    <Table @ref="table"
+       TItem="ColorDB"
+       DataSource="@colorDBs">
+        <Selection Key="@context.Id" />
+        <Column Title="Tên màu" @bind-Field="@context.Name" Sortable />
+        <Column Title="Mã màu" @bind-Field="@context.Code" Sortable />
+        <ActionColumn Title="Màu">
+            <div style="background-color:@context.Code; height:30px; width: 30px; cursor: pointer;"></div>
+        </ActionColumn>
+        <ActionColumn Title="Chỉnh sửa">
+            <Space>
+                <SpaceItem>
+                    <Tooltip Title="@IconType.Outline.Edit">
+                        <Button Type="@ButtonType.Primary" Shape="@ButtonShape.Circle" Icon="@IconType.Outline.Edit" OnClick="@(()=>showFormUpdate(context))" />
+                    </Tooltip>
+                </SpaceItem><SpaceItem>
+                    <Tooltip Title="@IconType.Outline.Delete">
+                        <Button Danger Type="@ButtonType.Primary" Shape="@ButtonShape.Circle" Icon="@IconType.Outline.Delete" OnClick="@(()=>showConfirmDelete(context.Id))" />
+                    </Tooltip>
+                </SpaceItem>
+            </Space>
+        </ActionColumn>
+    </Table>
+    <Modal Title="@title"
+       Visible="@_visibleDelete"
+       OnOk="@HandleDelete"
+       OkType="danger"
+       OnCancel="@(()=>_visibleDelete = false)"
+       MaxBodyHeight="@("30vh")"
+       WrapClassName="modal-delete">
+        <div>
+            <p>
+                Bạn có chắc muốn xóa Màu này?
+            </p>
+        </div>
+    </Modal>
+    <Modal Title="@(isUpdate ? titleUpdate : titleAdd)"
+       Visible="@_visibleFormAddUpdate"
+       OnOk="@(isUpdate ? HandleUpdateColor : HandleAddColor)"
+       OnCancel="@(()=>_visibleFormAddUpdate = false)"
+       MaxBodyHeight="@("50vh")">
+        <Form Model="@colorDb"
+          LabelColSpan="8"
+          WrapperColSpan="16">
+            <FormItem Label="Tên màu">
+                <Input @bind-Value="@context.Name" />
+            </FormItem>
+            <FormItem Label="Mã màu" WrapperColOffset="8" WrapperColSpan="16">
+                <div  @onclick="OpenModal" style="background-color:@color; height:30px; width: 30px; cursor: pointer;">
+                </div>
+
+                <ColorPicker Title="My Blazor ColorPicker" IsOpened="isOpenedColorPicker" Closed="ClosedEvent" MyColor="@color">
+                </ColorPicker>
+            </FormItem>
+        </Form>
+        <div>
+        </div>
+    </Modal>
+}
+
+
+@code {
+    int[] a = { PermissionAccount.ADMIN };
+    List<ColorDB> colorDBs = new List<ColorDB>();
+    ColorDB colorDb = new ColorDB();
+    string idDelete = "";
+    string title = "Cảnh Báo !!!";
+    string titleAdd = "Thêm Màu sản phẩm";
+    string titleUpdate = "Sửa Màu sản phẩm";
+    bool _visibleDelete = false;
+    bool _visibleFormAddUpdate = false;
+    bool isOpenedColorPicker = false;
+    bool isUpdate = false;
+    string color = "#ccc";
+    ITable table;
+    protected override void OnInitialized()
+    {
+        getData();
+    }
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await checkRole(a);
+        }
+    }
+    private void getData()
+    {
+        colorDBs = ColorService.GetAllColor();
+    }
+    private void showConfirmDelete(string id)
+    {
+        idDelete = id;
+        _visibleDelete = true;
+    }
+    private void HandleDelete(MouseEventArgs e)
+    {
+        colorDBs = colorDBs.Where(x => x.Id != idDelete).ToList();
+        bool s = ColorService.Delete(idDelete);
+        _visibleDelete = false;
+    }
+    private void showFormAdd()
+    {
+        isUpdate = false;
+        colorDb = new ColorDB();
+        _visibleFormAddUpdate = true;
+    }
+    private void showFormUpdate(ColorDB colorUpdate)
+    {
+        isUpdate = true;
+        colorDb = colorUpdate;
+        color = colorUpdate.Code;
+        _visibleFormAddUpdate = true;
+    }
+    private void HandleAddColor(MouseEventArgs e)
+    {
+        colorDb.Code = color;
+        ColorService.Add(colorDb);
+        getData();
+        _visibleFormAddUpdate = false;
+    }
+    private void HandleUpdateColor(MouseEventArgs e)
+    {
+        ColorService.Update(colorDb);
+        getData();
+        _visibleFormAddUpdate = false;
+    }
+
+
+
+    void OpenModal()
+    {
+        isOpenedColorPicker = true;
+    }
+
+    void ClosedEvent(string value)
+    {
+        color = value;
+        colorDb.Code = value;
+        isOpenedColorPicker = false;
+    }
+
+
+    public async Task checkRole(int[] a)
+    {
+        SessionUser sessionUser;
+        sessionUser = await session.GetItemAsync<SessionUser>(SessionKey.USER);
+        if (sessionUser != null)
+        {
+            if (!a.Contains(sessionUser.Permission))
+            {
+                NavigationManager.NavigateTo("/admin/login");
+            }
+        }
+        else
+        {
+            NavigationManager.NavigateTo("/admin/login"); 
+        }
+
+    }
+}

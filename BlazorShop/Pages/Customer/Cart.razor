@@ -1,0 +1,211 @@
+﻿@page "/cart"
+@using BlazorShop.Core.constant
+@using BlazorShop.Model
+@layout CustomerLayout
+@inject MessageService _message
+@inject BlazorShop.Service.IProductService ProductService
+@inject BlazorShop.Service.IColorService ColorService
+@inject BlazorShop.Service.ISizeService SizeService
+@inject BlazorShop.Service.ICustomerService CustomerService
+@using BlazorShop.Entities
+@inject BlazorShop.Service.IBillService BillService
+@inject BlazorShop.Service.IBillDetailService BillDetailService
+@inject Blazored.SessionStorage.ISessionStorageService session
+@inject NavigationManager NavigationManager
+    
+
+@if(sessionCarts == null)
+{
+    <div style="width:100%;">
+        <img style="margin-left:450px;width:400px;height:300px;margin-bottom:200px;align-items:center;" src="https://foodhub.vn/assets/images/no-cart.png" />
+    </div>
+}
+else
+{
+    <!-- Breadcrumb Begin -->
+    <div class="breadcrumb-option">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-12">
+                    <div class="breadcrumb__links">
+                        <a href="./index.html"><i class="fa fa-home"></i> Home</a>
+                        <span>Shopping cart</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Breadcrumb End -->
+
+    <!-- Shop Cart Section Begin -->
+    <section class="shop-cart spad">
+        <div class="container">
+            <div class="row">
+                <div class="col-lg-12">
+                    <div class="shop__cart__table">
+                        <table>
+                            <thead>
+                                <tr>
+                                    <th>Product</th>
+                                    <th>Color</th>
+                                    <th>Size</th>
+                                    <th>Price</th>
+                                    <th>Quantity</th>
+                                    <th>Total</th>
+                                    <th></th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach(var item in sessionCarts)
+                                {
+                                    
+                                    @(Total += ProductService.GetProductFromId(item.ProductId).Price * item.Amount);
+                                    <tr>
+                                    <td class="cart__product__item">
+                                        <img style="width:100px;height:150px;" src="@ProductService.GetProductFromId(@item.ProductId).Images[0].Path" alt="">
+                                        <div class="cart__product__item__title">
+                                            <h6>@ProductService.GetProductFromId(@item.ProductId).Name</h6>
+                                            <div class="rating">
+                                                <i class="fa fa-star"></i>
+                                                <i class="fa fa-star"></i>
+                                                <i class="fa fa-star"></i>
+                                                <i class="fa fa-star"></i>
+                                                <i class="fa fa-star"></i>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="cart__quantity">
+                                        <div style="margin:0px 0px 10px 0px;width:30px;height:30px;background-color:@item.ColorId;"></div>
+                                    </td>
+                                    <td class="cart__quantity">
+                                        @item.SizeId
+                                    </td>
+                                    <td class="cart__price">$ @ProductService.GetProductFromId(@item.ProductId).Price</td>
+                                    <td class="cart__quantity">
+                                        <div class="pro-qty">
+                                            <input type="text" value="@item.Amount">
+                                        </div>
+                                    </td>
+                                    
+                                    <td class="cart__total">@(ProductService.GetProductFromId(item.ProductId).Price * item.Amount)</td>
+                                    <td class="cart__close"><span @onclick=@(e => RemovedItem(item.ProductId, item.ColorId, item.SizeId)) class="icon_close"></span></td>
+                                </tr>
+                                }
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-lg-6 col-md-6 col-sm-6">
+                    <div class="cart__btn">
+                        <a href="shop">Continue Shopping</a>
+                    </div>
+                </div>
+                <div class="col-lg-6 col-md-6 col-sm-6">
+                    <div class="cart__btn update__btn">
+                        
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-lg-6">
+                    <div class="discount__content">
+                        
+                    </div>
+                    <div class="cart__total__procced">
+                        <h6>Account form</h6>
+                        <ul>
+                            <li>Name <span style="color:blue"> @sessionUser.Name </span></li>
+                            <li>Phone number <span style="color:blue">@CustomerService.GetCustomerFromIdAccount(@sessionUser.Id).Phone</span></li>
+                            <li>Email <span style="color:blue">@CustomerService.GetCustomerFromIdAccount(sessionUser.Id).Email</span></li>
+                            <li>Address <span style="color:blue">@CustomerService.GetCustomerFromIdAccount(sessionUser.Id).Address</span></li>
+                        </ul>
+                    </div>
+                </div>
+                <div class="col-lg-4 offset-lg-2">
+                    <div class="cart__total__procced">
+                        <h6>Cart total</h6>
+                        <ul>
+                            <li>Total <span>$ @Total</span></li>
+                        </ul>
+                        <div @onclick=@(e => ThanhToan()) class="primary-btn">Proceed to checkout</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+    <!-- Shop Cart Section End -->
+}
+
+@code {
+    List<SessionCart> sessionCarts;
+    int price;
+    int Total = 0;
+    SessionUser sessionUser;
+
+    protected override async Task OnInitializedAsync()
+    {
+        sessionUser = await session.GetItemAsync<SessionUser>(SessionKey.CUSTOMER);
+        sessionCarts = await session.GetItemAsync<List<SessionCart>>(SessionKey.CART);
+        if(sessionCarts != null)
+        {
+            Console.WriteLine("Da vao nha");
+        }
+    }
+
+    private void getData()
+    {
+
+        // Console.WriteLine(product.ColorDBs.Count());
+    }
+
+    private async void RemovedItem(string ProductId, string ColorId, string SizeId)
+    {
+        for(int i=0;i< sessionCarts.Count();i++)
+        {
+            if(sessionCarts[i].ProductId == ProductId && sessionCarts[i].ColorId == ColorId && sessionCarts[i].SizeId == SizeId)
+            {
+                sessionCarts.RemoveAt(i);
+            }
+        }
+        await session.SetItemAsync(SessionKey.CART,sessionCarts);
+        if(sessionCarts.Count()<=0)
+        {
+            session.RemoveItemAsync(SessionKey.CART);
+            sessionCarts = null;
+        }
+
+    }
+
+    private async void ThanhToan()
+    {
+        Console.WriteLine("Start Order");
+
+
+        if(sessionUser != null)
+        {
+            Bill bill = new Bill();
+            bill.CreatedDate = DateTime.Now;
+            bill.Total = Total;
+            //Phải là customerID
+            bill.CustomerId = CustomerService.GetCustomerFromIdAccount(sessionUser.Id).Id;
+            bill.StatusBill = 0;
+            Bill bill1 = BillService.Add(bill);
+
+            for(int i=0;i< sessionCarts.Count();i++)
+            {
+                BillDetail billDetail = new BillDetail();
+                billDetail.ProductId = sessionCarts[i].ProductId;
+                billDetail.Amount = sessionCarts[i].Amount;
+                billDetail.BillId = bill1.Id;
+                BillDetailService.Add(billDetail);
+            }
+            session.RemoveItemAsync(SessionKey.CART);
+            await _message.Success("Mua hàng thành công");
+            NavigationManager.NavigateTo("/");
+        }
+        
+    }
+
+}
